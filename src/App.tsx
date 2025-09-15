@@ -1,10 +1,29 @@
 import React from 'react';
+import { useAuth } from './hooks/useAuth';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
 
 function App() {
+  const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = React.useState<'home' | 'login' | 'signup' | 'dashboard'>('home');
+
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-100 to-cyan-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, show dashboard
+  if (user && currentPage !== 'home') {
+    return <Dashboard onLogout={handleLogout} />;
+  }
 
   const handleLogin = () => {
     setCurrentPage('login');
@@ -27,11 +46,11 @@ function App() {
   };
 
   if (currentPage === 'login') {
-    return <Login onBack={handleBackToHome} />;
+    return <Login onBack={handleBackToHome} onSuccess={handleDashboard} />;
   }
 
   if (currentPage === 'signup') {
-    return <Signup onBack={handleBackToHome} />;
+    return <Signup onBack={handleBackToHome} onSuccess={handleDashboard} />;
   }
 
   if (currentPage === 'dashboard') {

@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 
 interface DashboardProps {
   onLogout: () => void;
 }
 
 function Dashboard({ onLogout }: DashboardProps) {
+  const { user, signOut } = useAuth();
   const [tasks, setTasks] = useState([
     'Finish homework',
     'Call John',
     'Buy groceries'
   ]);
   const [newTask, setNewTask] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +23,12 @@ function Dashboard({ onLogout }: DashboardProps) {
     }
   };
 
+  const handleLogout = async () => {
+    setLoading(true);
+    await signOut();
+    onLogout();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-100 to-cyan-100 flex items-center justify-center p-4 font-open-sans">
       <div className="w-full max-w-2xl mx-auto">
@@ -27,6 +36,12 @@ function Dashboard({ onLogout }: DashboardProps) {
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-blue-100">
           {/* Heading */}
           <div className="text-center mb-8">
+            <div className="mb-4">
+              <p className="text-sm text-gray-500">Welcome back,</p>
+              <p className="text-lg font-semibold text-blue-600">
+                {user?.user_metadata?.name || user?.email || 'User'}
+              </p>
+            </div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
               Your Tasks
             </h1>
@@ -71,10 +86,11 @@ function Dashboard({ onLogout }: DashboardProps) {
 
           {/* Logout Button */}
           <button
-            onClick={onLogout}
-            className="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 transform hover:-translate-y-1"
+            onClick={handleLogout}
+            disabled={loading}
+            className="w-full bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-700 disabled:text-gray-500 font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 transform hover:-translate-y-1 disabled:transform-none disabled:cursor-not-allowed"
           >
-            Logout
+            {loading ? 'Signing out...' : 'Logout'}
           </button>
         </div>
       </div>

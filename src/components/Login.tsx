@@ -1,17 +1,31 @@
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 
 interface LoginProps {
   onBack: () => void;
+  onSuccess: () => void;
 }
 
-function Login({ onBack }: LoginProps) {
+function Login({ onBack, onSuccess }: LoginProps) {
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
-    // Add login logic here
+    setLoading(true);
+    setError(null);
+
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      onSuccess();
+    }
   };
 
   return (
@@ -37,6 +51,13 @@ function Login({ onBack }: LoginProps) {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -72,9 +93,10 @@ function Login({ onBack }: LoginProps) {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 mt-8"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 mt-8 disabled:transform-none"
             >
-              Login
+              {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
 
