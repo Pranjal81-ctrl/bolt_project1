@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTasks, Task } from '../hooks/useTasks';
+import TaskItem from './TaskItem';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -7,18 +10,36 @@ interface DashboardProps {
 
 function Dashboard({ onLogout }: DashboardProps) {
   const { user, signOut } = useAuth();
-  const [tasks, setTasks] = useState([
-    'Finish homework',
-    'Call John',
-    'Buy groceries'
-  ]);
+  const { tasks, loading: tasksLoading, error: tasksError, addTask, updateTask, deleteTask } = useTasks();
   const [newTask, setNewTask] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [loading, setLoading] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newTask.trim()) {
-      setTasks([...tasks, newTask.trim()]);
+    if (newTask.trim() && !addingTask) {
+      setAddingTask(true);
+      const { error } = await addTask(newTask.trim(), newTaskPriority);
+      if (!error) {
+        setNewTask('');
+        setNewTaskPriority('medium');
+      }
+      setAddingTask(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: Task['status']) => {
+    await updateTask(id, { status });
+  };
+
+  const handleUpdatePriority = async (id: string, priority: Task['priority']) => {
+    await updateTask(id, { priority });
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      await deleteTask(id);
       setNewTask('');
     }
   };
@@ -49,20 +70,108 @@ function Dashboard({ onLogout }: DashboardProps) {
           </div>
 
           {/* Task List */}
-          <div className="mb-8">
-            <ul className="space-y-3">
-              {tasks.map((task, index) => (
-                <li key={index} className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <span className="text-blue-600 font-semibold mr-3">{index + 1}.</span>
-                  <span className="text-gray-700">{task}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="mb-8 space-y-4">
+            {tasksLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading tasks...</p>
+              </div>
+            ) : tasksError ? (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-center">
+                Error loading tasks: {tasksError}
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-lg mb-2">No tasks yet!</p>
+                <p>Add your first task below to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tasks.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    onUpdateStatus={handleUpdateStatus}
+                    onUpdatePriority={handleUpdatePriority}
+                    onDelete={handleDeleteTask}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Add New Task Form */}
           <form onSubmit={handleAddTask} className="mb-8">
-            <div className="mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="md:col-span-2">
+                <label htmlFor="newTask" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Task Title
+                </label>
+                <input
+                  type="text"
+                  id="newTask"
+                  value={newTask}
+                  onChange={(e) => setNewTask(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 placeholder-gray-400"
+                  placeholder="Enter a new task"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="priority" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Priority
+                </label>
+                <select
+                  id="priority"
+                  value={newTaskPriority}
+                  onChange={(e) => setNewTaskPriority(e.target.value as 'low' | 'medium' | 'high')}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={addingTask || !newTask.trim()}
+              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:transform-none flex items-center justify-center gap-2"
+            >
+              <Plus size={20} />
+              {addingTask ? 'Adding Task...' : 'Add Task'}
+            </button>
+          </form>
+
+          {/* Task Statistics */}
+          {tasks.length > 0 && (
+            <div className="mb-8 grid grid-cols-3 gap-4">
+              <div className="bg-gray-50 rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-gray-600">
+                  {tasks.filter(task => task.status === 'pending').length}
+                </div>
+                <div className="text-sm text-gray-500">Pending</div>
+              </div>
+              <div className="bg-blue-50 rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {tasks.filter(task => task.status === 'in-progress').length}
+                </div>
+                <div className="text-sm text-blue-500">In Progress</div>
+              </div>
+              <div className="bg-green-50 rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {tasks.filter(task => task.status === 'done').length}
+                </div>
+                <div className="text-sm text-green-500">Done</div>
+              </div>
+            </div>
+          )}
+
+          {/* Legacy form removal */}
+          <form onSubmit={handleAddTask} className="mb-8" style={{ display: 'none' }}>
+            <div className="mb-4" style={{ display: 'none' }}>
               <label htmlFor="newTask" className="block text-sm font-semibold text-gray-700 mb-2">
                 New Task
               </label>
@@ -78,7 +187,8 @@ function Dashboard({ onLogout }: DashboardProps) {
             
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+              className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1" 
+              style={{ display: 'none' }}
             >
               Add Task
             </button>
