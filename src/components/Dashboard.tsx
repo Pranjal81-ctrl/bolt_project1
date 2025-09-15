@@ -16,7 +16,7 @@ function Dashboard({ onLogout }: DashboardProps) {
   const [loading, setLoading] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
 
-  const handleAddTask = (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTask.trim() && !addingTask) {
       setAddingTask(true);
