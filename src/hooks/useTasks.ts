@@ -58,20 +58,26 @@ export function useTasks() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate embedding');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Embedding generation failed:', errorData);
+        throw new Error(`Failed to generate embedding: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Generated embedding for:', title, 'Length:', data.embedding?.length);
       return data.embedding;
     } catch (err) {
       console.error('Error generating embedding:', err);
       return null;
     }
   };
+
   const addTask = async (title: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
     try {
+      console.log('Adding task with title:', title);
       // Generate embedding for the task title
       const embedding = await generateEmbedding(title);
+      console.log('Generated embedding:', embedding ? 'Success' : 'Failed');
       
       const { data, error } = await supabase
         .from('tasks')
@@ -81,17 +87,19 @@ export function useTasks() {
             priority,
             status: 'pending',
             user_id: user?.id,
-            embedding: embedding
+            ...(embedding && { embedding })
           }
         ])
         .select()
         .single()
 
       if (error) throw error
+      console.log('Task added successfully:', data);
       setTasks(prev => [data, ...prev])
       return { data, error: null }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add task'
+      console.error('Add task error:', err);
       setError(errorMessage)
       return { data: null, error: errorMessage }
     }
@@ -102,9 +110,11 @@ export function useTasks() {
       // If title is being updated, generate new embedding
       let finalUpdates = { ...updates, updated_at: new Date().toISOString() };
       if (updates.title) {
+        console.log('Updating task title, generating new embedding for:', updates.title);
         const embedding = await generateEmbedding(updates.title);
         if (embedding) {
-          finalUpdates.embedding = embedding;
+          finalUpdates = { ...finalUpdates, embedding };
+          console.log('New embedding generated for update');
         }
       }
       
