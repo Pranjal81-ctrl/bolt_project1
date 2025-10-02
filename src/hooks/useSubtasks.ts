@@ -125,13 +125,25 @@ export function useSubtasks(parentTaskId?: string) {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate subtasks')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to generate subtasks`)
       }
 
-      const { subtasks } = await response.json()
+      const data = await response.json()
+      const { subtasks, error: apiError } = data
+      
+      if (apiError) {
+        throw new Error(apiError)
+      }
+      
+      if (!subtasks || !Array.isArray(subtasks) || subtasks.length === 0) {
+        throw new Error('No valid subtasks received from the server')
+      }
+      
       return { subtasks, error: null }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate subtasks'
+      console.error('Generate subtasks error:', err)
       return { subtasks: [], error: errorMessage }
     }
   }

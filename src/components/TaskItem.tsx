@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Sparkles, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Task } from '../hooks/useTasks';
 import { useSubtasks } from '../hooks/useSubtasks';
 import SubtaskItem from './SubtaskItem';
@@ -29,22 +29,43 @@ function TaskItem({ task, onUpdateStatus, onUpdatePriority, onDelete }: TaskItem
   const [generatedSuggestions, setGeneratedSuggestions] = React.useState<string[]>([]);
   const [loadingSubtasks, setLoadingSubtasks] = React.useState(false);
   const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleGenerateSubtasks = async () => {
     setLoadingSubtasks(true);
+    setError(null);
     const { subtasks: suggestions, error } = await generateSubtasks(task.title);
     
-    if (!error && suggestions) {
+    if (error) {
+      setError(error);
+      setShowSuggestions(false);
+    } else if (suggestions && suggestions.length > 0) {
       setGeneratedSuggestions(suggestions);
       setShowSuggestions(true);
+    } else {
+      setError('No subtasks were generated. Please try again.');
+      setShowSuggestions(false);
     }
     setLoadingSubtasks(false);
   };
 
   const handleSaveSubtask = async (suggestion: string) => {
-    await addSubtask(suggestion, 'medium');
-    setGeneratedSuggestions(prev => prev.filter(s => s !== suggestion));
-    setShowSubtasks(true);
+    const { error } = await addSubtask(suggestion, 'medium');
+    if (!error) {
+      setGeneratedSuggestions(prev => prev.filter(s => s !== suggestion));
+      setShowSubtasks(true);
+      
+      // If no more suggestions, hide the suggestions panel
+      if (generatedSuggestions.length === 1) {
+        setShowSuggestions(false);
+      }
+    }
+  };
+
+  const handleDismissSuggestions = () => {
+    setShowSuggestions(false);
+    setGeneratedSuggestions([]);
+    setError(null);
   };
 
   const handleUpdateSubtaskStatus = async (id: string, status: any) => {
@@ -112,26 +133,48 @@ function TaskItem({ task, onUpdateStatus, onUpdatePriority, onDelete }: TaskItem
 
       {/* Generate Subtasks Button */}
       <div className="px-4 pb-4">
-        <button
-          onClick={handleGenerateSubtasks}
-          disabled={loadingSubtasks}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Sparkles size={16} />
-          {loadingSubtasks ? 'Generating...' : 'Generate Subtasks with AI'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleGenerateSubtasks}
+            disabled={loadingSubtasks}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sparkles size={16} />
+            {loadingSubtasks ? 'Generating...' : 'Generate Subtasks with AI'}
+          </button>
+          
+          {(showSuggestions || error) && (
+            <button
+              onClick={handleDismissSuggestions}
+              className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors duration-200"
+              title="Dismiss suggestions"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
 
         {/* AI Suggestions */}
         {showSuggestions && generatedSuggestions.length > 0 && (
           <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">AI Suggested Subtasks:</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-blue-800">AI Suggested Subtasks:</h4>
+              <span className="text-xs text-blue-600">{generatedSuggestions.length} suggestions</span>
+            </div>
             <div className="space-y-2">
               {generatedSuggestions.map((suggestion, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-blue-100">
-                  <span className="text-sm text-gray-700">{suggestion}</span>
+                <div key={index} className="flex items-start justify-between p-3 bg-white rounded-lg border border-blue-100 shadow-sm">
+                  <span className="text-sm text-gray-700 flex-1 pr-3 leading-relaxed">{suggestion}</span>
                   <button
                     onClick={() => handleSaveSubtask(suggestion)}
-                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200"
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 whitespace-nowrap"
                   >
                     Save
                   </button>
