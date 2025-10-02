@@ -143,27 +143,30 @@ function Dashboard({ onLogout }: DashboardProps) {
           </div>
 
           {/* Smart Search Section */}
-          <div className="mb-8">
+          <div className="mb-8 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-100">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
+              Smart Search
+            </h2>
             <form onSubmit={handleSmartSearch} className="mb-4">
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col gap-4">
                 <div className="flex-1">
                   <label htmlFor="smartSearch" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Smart Search
+                    Search your tasks using natural language
                   </label>
                   <input
                     type="text"
                     id="smartSearch"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 placeholder-gray-400"
-                    placeholder="Search tasks using natural language..."
+                    className="w-full px-4 py-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 placeholder-gray-400 bg-white shadow-sm"
+                    placeholder="e.g., 'urgent tasks', 'work projects', 'planning events'..."
                   />
                 </div>
-                <div className="flex gap-2 sm:items-end sm:pb-0">
+                <div className="flex gap-3 justify-center">
                   <button
                     type="submit"
                     disabled={searching || !searchQuery.trim()}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:transform-none"
+                    className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:transform-none min-w-[120px]"
                   >
                     {searching ? (
                       <>
@@ -181,7 +184,7 @@ function Dashboard({ onLogout }: DashboardProps) {
                     <button
                       type="button"
                       onClick={clearSearch}
-                      className="px-4 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors duration-200"
+                      className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-white rounded-xl transition-colors duration-200 border border-gray-200 shadow-sm"
                     >
                       Clear
                     </button>
@@ -192,19 +195,19 @@ function Dashboard({ onLogout }: DashboardProps) {
 
             {/* Search Error */}
             {searchError && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl">
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl shadow-sm">
                 <p className="text-sm">{searchError}</p>
               </div>
             )}
 
             {/* Search Results */}
             {searchResults.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-blue-800">
-                    Smart Search Results
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Search Results
                   </h3>
-                  <span className="text-sm text-blue-600">
+                  <span className="text-sm text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
                     {searchResults.length} similar task{searchResults.length !== 1 ? 's' : ''} found
                   </span>
                 </div>
@@ -212,11 +215,11 @@ function Dashboard({ onLogout }: DashboardProps) {
                   {searchResults.map((result, index) => (
                     <div
                       key={result.id}
-                      className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-200"
+                      className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-900 mb-2">
+                          <h4 className="font-semibold text-gray-900 mb-2 text-base">
                             {result.title}
                           </h4>
                           <div className="flex items-center gap-3 text-sm">
@@ -237,7 +240,7 @@ function Dashboard({ onLogout }: DashboardProps) {
                           </div>
                         </div>
                         <div className="text-right ml-4">
-                          <div className="text-sm font-medium text-blue-600">
+                          <div className="text-sm font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
                             {Math.round(result.similarity * 100)}% match
                           </div>
                           <div className="text-xs text-gray-500">
@@ -253,7 +256,7 @@ function Dashboard({ onLogout }: DashboardProps) {
 
             {/* No Results Message */}
             {searchQuery && !searching && searchResults.length === 0 && !searchError && (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
+              <div className="bg-white border border-gray-200 rounded-xl p-6 text-center shadow-sm">
                 <p className="text-gray-600">
                   No similar tasks found with similarity above 70%.
                 </p>
