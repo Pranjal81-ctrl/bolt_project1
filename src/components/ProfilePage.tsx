@@ -27,15 +27,12 @@ function ProfilePage({ onBack }: ProfilePageProps) {
       const fileName = `${user.id}.jpg`;
       
       // First check if we can access the bucket
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      if (bucketError || !buckets?.find(b => b.name === 'profile-pictures')) {
-        setProfilePicture(null);
-        return;
-      }
+      // Use the default bucket with profile-pictures folder
+      const bucketName = 'profile-pictures'; // This should be your actual bucket name
       
       const { data } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(fileName);
+        .from(bucketName)
+        .getPublicUrl(`profile-pictures/${fileName}`);
       
       // Check if the file exists without triggering error logs
       const response = await fetch(data.publicUrl, { method: 'HEAD' });
@@ -74,15 +71,12 @@ function ProfilePage({ onBack }: ProfilePageProps) {
       const fileName = `${user.id}.jpg`;
       
       // Check if bucket exists and has proper permissions
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      if (bucketError || !buckets?.find(b => b.name === 'profile-pictures')) {
-        throw new Error('Storage bucket not configured. Please contact support.');
-      }
+      const bucketName = 'profile-pictures'; // Replace with your actual bucket name if different
       
       // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
-        .upload(fileName, file, {
+        .from(bucketName)
+        .upload(`profile-pictures/${fileName}`, file, {
           cacheControl: '3600',
           upsert: true
         });
@@ -96,8 +90,8 @@ function ProfilePage({ onBack }: ProfilePageProps) {
 
       // Get the public URL and update state
       const { data } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(fileName);
+        .from(bucketName)
+        .getPublicUrl(`profile-pictures/${fileName}`);
 
       setProfilePicture(data.publicUrl + '?t=' + Date.now());
       setSuccess('Profile picture uploaded successfully!');
