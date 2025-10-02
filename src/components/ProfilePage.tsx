@@ -13,14 +13,35 @@ function ProfilePage({ onBack }: ProfilePageProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [bucketExists, setBucketExists] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (user) {
+      checkBucketExists();
       loadProfilePicture();
     }
   }, [user]);
 
+  const checkBucketExists = async () => {
+    try {
+      const { data: buckets, error } = await supabase.storage.listBuckets();
+      if (error) throw error;
+      
+      const exists = buckets?.some(bucket => bucket.name === 'profile-pictures') || false;
+      setBucketExists(exists);
+      
+      if (!exists) {
+        setError('Profile picture storage is not configured. Please contact support.');
+      }
+    } catch (err) {
+      setBucketExists(false);
+      setError('Unable to access profile picture storage.');
+    }
+  };
+
   const loadProfilePicture = async () => {
+    if (bucketExists === false) return;
+    
     try {
       const fileName = `${user?.id}.jpg`;
       const { data } = await supabase.storage
@@ -33,13 +54,20 @@ function ProfilePage({ onBack }: ProfilePageProps) {
         setProfilePicture(data.publicUrl);
       }
     } catch (err) {
-      console.log('No existing profile picture found');
+      if (bucketExists !== false) {
+        console.log('No existing profile picture found');
+      }
     }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
+    
+    if (bucketExists === false) {
+      setError('Profile picture storage is not available. Please contact support.');
+      return;
+    }
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -178,14 +206,14 @@ function ProfilePage({ onBack }: ProfilePageProps) {
                   type="file"
                   accept="image/*"
                   onChange={handleFileUpload}
-                  disabled={uploading}
+                  disabled={uploading || bucketExists === false}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   id="profile-picture-upload"
                 />
                 <label
                   htmlFor="profile-picture-upload"
                   className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer ${
-                    uploading ? 'opacity-50 cursor-not-allowed transform-none' : ''
+                    uploading || bucketExists === false ? 'opacity-50 cursor-not-allowed transform-none' : ''
                   }`}
                 >
                   {uploading ? (
@@ -194,10 +222,14 @@ function ProfilePage({ onBack }: ProfilePageProps) {
                       Uploading...
                     </>
                   ) : (
+                    bucketExists === false ? (
+                      'Storage Not Available'
+                    ) : (
                     <>
                       <Camera size={20} />
                       Upload Profile Picture
                     </>
+                    )
                   )}
                 </label>
               </div>
