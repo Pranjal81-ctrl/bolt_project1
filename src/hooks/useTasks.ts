@@ -44,12 +44,15 @@ export function useTasks() {
 
   const generateEmbedding = async (title: string) => {
     try {
+      console.log('🔄 Starting embedding generation for:', title);
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-embedding`;
+      console.log('📡 API URL:', apiUrl);
       
       const headers = {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       };
+      console.log('🔑 Headers configured');
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -57,27 +60,36 @@ export function useTasks() {
         body: JSON.stringify({ text: title })
       });
 
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Embedding generation failed:', errorData);
+        console.error('❌ Embedding generation failed:', errorData);
         throw new Error(`Failed to generate embedding: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Generated embedding for:', title, 'Length:', data.embedding?.length);
+      console.log('✅ Generated embedding for:', title);
+      console.log('📏 Embedding length:', data.embedding?.length);
+      console.log('🔢 First few values:', data.embedding?.slice(0, 5));
       return data.embedding;
     } catch (err) {
-      console.error('Error generating embedding:', err);
+      console.error('❌ Error generating embedding:', err);
       return null;
     }
   };
 
   const addTask = async (title: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
     try {
-      console.log('Adding task with title:', title);
+      console.log('🆕 Adding task with title:', title);
       // Generate embedding for the task title
       const embedding = await generateEmbedding(title);
-      console.log('Generated embedding:', embedding ? 'Success' : 'Failed');
+      console.log('🎯 Generated embedding:', embedding ? '✅ Success' : '❌ Failed');
+      
+      if (!embedding) {
+        console.warn('⚠️ No embedding generated, proceeding without embedding');
+      }
       
       const { data, error } = await supabase
         .from('tasks')
@@ -94,12 +106,13 @@ export function useTasks() {
         .single()
 
       if (error) throw error
-      console.log('Task added successfully:', data);
+      console.log('✅ Task added successfully:', data);
+      console.log('🔍 Task has embedding:', !!data.embedding);
       setTasks(prev => [data, ...prev])
       return { data, error: null }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add task'
-      console.error('Add task error:', err);
+      console.error('❌ Add task error:', err);
       setError(errorMessage)
       return { data: null, error: errorMessage }
     }
