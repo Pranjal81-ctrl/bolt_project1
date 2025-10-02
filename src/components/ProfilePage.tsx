@@ -25,17 +25,27 @@ function ProfilePage({ onBack }: ProfilePageProps) {
     
     try {
       const fileName = `${user.id}.jpg`;
+      
+      // First check if we can access the bucket
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      if (bucketError || !buckets?.find(b => b.name === 'profile-pictures')) {
+        setProfilePicture(null);
+        return;
+      }
+      
       const { data } = supabase.storage
         .from('profile-pictures')
         .getPublicUrl(fileName);
       
-      // Check if the file exists by attempting to fetch it
-      const response = await fetch(data.publicUrl);
-      if (response.ok) {
+      // Check if the file exists without triggering error logs
+      const response = await fetch(data.publicUrl, { method: 'HEAD' });
+      if (response.ok && response.status === 200) {
         setProfilePicture(data.publicUrl);
+      } else {
+        setProfilePicture(null);
       }
     } catch (err) {
-      // File doesn't exist or other error - this is expected for new users
+      // Silently handle errors - missing files are expected for new users
       setProfilePicture(null);
     }
   };
@@ -63,6 +73,12 @@ function ProfilePage({ onBack }: ProfilePageProps) {
     try {
       const fileName = `${user.id}.jpg`;
       
+      // Check if bucket exists and has proper permissions
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      if (bucketError || !buckets?.find(b => b.name === 'profile-pictures')) {
+        throw new Error('Storage bucket not configured. Please contact support.');
+      }
+      
       // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('profile-pictures')
@@ -71,7 +87,12 @@ function ProfilePage({ onBack }: ProfilePageProps) {
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('row-level security policy')) {
+          throw new Error('Upload permissions not configured. Please contact support to set up storage policies.');
+        }
+        throw uploadError;
+      }
 
       // Get the public URL and update state
       const { data } = supabase.storage
