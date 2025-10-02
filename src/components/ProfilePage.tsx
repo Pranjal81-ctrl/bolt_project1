@@ -16,9 +16,33 @@ function ProfilePage({ onBack }: ProfilePageProps) {
 
   useEffect(() => {
     if (user) {
+      createBucketIfNotExists();
       loadProfilePicture();
     }
   }, [user]);
+
+  const createBucketIfNotExists = async () => {
+    try {
+      // Try to list buckets to check if profile-pictures exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'profile-pictures');
+      
+      if (!bucketExists) {
+        // Create the bucket
+        const { error } = await supabase.storage.createBucket('profile-pictures', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+          fileSizeLimit: 5242880 // 5MB
+        });
+        
+        if (error) {
+          console.error('Error creating bucket:', error);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking/creating bucket:', err);
+    }
+  };
 
   const loadProfilePicture = async () => {
     try {
