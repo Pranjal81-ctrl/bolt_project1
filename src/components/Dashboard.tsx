@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks, Task } from '../hooks/useTasks';
 import TaskItem from './TaskItem';
+import ProfilePage from './ProfilePage';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -15,6 +16,7 @@ function Dashboard({ onLogout }: DashboardProps) {
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [loading, setLoading] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +52,18 @@ function Dashboard({ onLogout }: DashboardProps) {
     onLogout();
   };
 
+  const handleShowProfile = () => {
+    setShowProfile(true);
+  };
+
+  const handleBackFromProfile = () => {
+    setShowProfile(false);
+  };
+
+  if (showProfile) {
+    return <ProfilePage onBack={handleBackFromProfile} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-100 to-cyan-100 flex items-center justify-center p-4 font-open-sans">
       <div className="w-full max-w-2xl mx-auto">
@@ -58,6 +72,15 @@ function Dashboard({ onLogout }: DashboardProps) {
           {/* Heading */}
           <div className="text-center mb-8">
             <div className="mb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <button
+                  onClick={handleShowProfile}
+                  className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                  title="View Profile"
+                >
+                  <User size={20} />
+                </button>
+              </div>
               <p className="text-sm text-gray-500">Welcome back,</p>
               <p className="text-lg font-semibold text-blue-600">
                 {user?.user_metadata?.name || user?.email || 'User'}
@@ -195,13 +218,23 @@ function Dashboard({ onLogout }: DashboardProps) {
           </form>
 
           {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            disabled={loading}
-            className="w-full bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-700 disabled:text-gray-500 font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 transform hover:-translate-y-1 disabled:transform-none disabled:cursor-not-allowed"
-          >
-            {loading ? 'Signing out...' : 'Logout'}
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={handleShowProfile}
+              className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-300 transform hover:-translate-y-1 flex items-center justify-center gap-2"
+            >
+              <User size={20} />
+              Profile
+            </button>
+            
+            <button
+              onClick={handleLogout}
+              disabled={loading}
+              className="flex-1 bg-white hover:bg-gray-50 disabled:bg-gray-100 text-gray-700 disabled:text-gray-500 font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 transform hover:-translate-y-1 disabled:transform-none disabled:cursor-not-allowed"
+            >
+              {loading ? 'Signing out...' : 'Logout'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
