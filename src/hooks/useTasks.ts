@@ -47,46 +47,45 @@ export function useTasks() {
       console.log('🔄 Starting embedding generation for:', title);
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-embedding`;
       console.log('📡 API URL:', apiUrl);
-      console.log('🔑 Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-      console.log('🔑 Anon Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
       
       const headers = {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       };
-      console.log('🔑 Headers configured');
 
       console.log('📤 Making request to generate embedding...');
+      
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ text: title })
+        body: JSON.stringify({ text: title }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       console.log('📊 Response status:', response.status);
       console.log('📊 Response ok:', response.ok);
-      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Embedding generation failed with status:', response.status);
         console.error('❌ Error response body:', errorText);
-        
-        let errorData = {};
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          console.error('❌ Could not parse error response as JSON');
-        }
-        
         throw new Error(`Failed to generate embedding: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('✅ Generated embedding for:', title);
+      
+      if (data.fallback) {
+        console.log('⚠️ Using fallback embedding for:', title);
+      } else {
+        console.log('✅ Generated AI embedding for:', title);
+      }
       console.log('📏 Embedding length:', data.embedding?.length);
-      console.log('🔢 First few values:', data.embedding?.slice(0, 5));
-      console.log('📦 Full response data:', data);
       
       if (!data.embedding || !Array.isArray(data.embedding)) {
         console.error('❌ Invalid embedding format received:', data);
@@ -94,12 +93,13 @@ export function useTasks() {
       }
       
       return data.embedding;
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Error generating embedding:', err);
-      console.error('❌ Error details:', {
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined
-      });
+      
+      if (err.name === 'AbortError') {
+        console.error('❌ Request timed out after 20 seconds');
+      }
+      
       return null;
     }
   };
