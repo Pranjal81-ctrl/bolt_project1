@@ -10,6 +10,7 @@ export interface Task {
   user_id: string
   created_at: string
   updated_at: string
+  embedding?: number[]
 }
 
 export function useTasks() {
@@ -41,8 +42,37 @@ export function useTasks() {
     }
   }
 
+  const generateEmbedding = async (title: string) => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-embedding`;
+      
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ text: title })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate embedding');
+      }
+
+      const data = await response.json();
+      return data.embedding;
+    } catch (err) {
+      console.error('Error generating embedding:', err);
+      return null;
+    }
+  };
   const addTask = async (title: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
     try {
+      // Generate embedding for the task title
+      const embedding = await generateEmbedding(title);
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert([
@@ -50,7 +80,8 @@ export function useTasks() {
             title,
             priority,
             status: 'pending',
-            user_id: user?.id
+            user_id: user?.id,
+            embedding: embedding
           }
         ])
         .select()
@@ -68,9 +99,18 @@ export function useTasks() {
 
   const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'priority' | 'status'>>) => {
     try {
+      // If title is being updated, generate new embedding
+      let finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+      if (updates.title) {
+        const embedding = await generateEmbedding(updates.title);
+        if (embedding) {
+          finalUpdates.embedding = embedding;
+        }
+      }
+      
       const { data, error } = await supabase
         .from('tasks')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(finalUpdates)
         .eq('id', id)
         .select()
         .single()

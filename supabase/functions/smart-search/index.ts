@@ -15,7 +15,7 @@ interface Task {
   priority: string;
   status: string;
   created_at: string;
-  similarity: number;
+  similarity?: number;
 }
 
 Deno.serve(async (req: Request) => {
@@ -53,18 +53,74 @@ Deno.serve(async (req: Request) => {
     const { createClient } = await import('npm:@supabase/supabase-js@2');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // First, let's check if we have embeddings for tasks
-    // If not, we'll generate them on the fly
+    // Search using vector similarity with stored embeddings
     const { data: tasksData, error: tasksError } = await supabase
-      .from('tasks')
-      .select('id, title, priority, status, created_at')
-      .eq('user_id', userId);
+      .rpc('search_tasks_by_similarity', {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.7,
+        match_count: 5,
+        user_id: userId
+      });
 
     if (tasksError) {
-      throw new Error(`Failed to fetch tasks: ${tasksError.message}`);
+      // Fallback to manual similarity calculation if RPC doesn't exist
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('tasks')
+        .select('id, title, priority, status, created_at, embedding')
+        .eq('user_id', userId)
+        .not('embedding', 'is', null);
+
+      if (fallbackError) {
+        throw new Error(`Failed to fetch tasks: ${fallbackError.message}`);
+      }
+
+      if (!fallbackData || fallbackData.length === 0) {
+        return new Response(
+          JSON.stringify({ results: [] }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Calculate similarity manually
+      const results: (Task & { similarity: number })[] = [];
+      
+      for (const task of fallbackData) {
+        if (task.embedding) {
+          const similarity = calculateCosineSimilarity(queryEmbedding, task.embedding);
+          if (similarity > 0.7) {
+            results.push({
+              id: task.id,
+              title: task.title,
+              priority: task.priority,
+              status: task.status,
+              created_at: task.created_at,
+              similarity
+            });
+          }
+        }
+      }
+
+      const topResults = results
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 5);
+
+      return new Response(
+        JSON.stringify({ results: topResults }),
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
-    if (!tasksData || tasksData.length === 0) {
+    if (!tasksData) {
       return new Response(
         JSON.stringify({ results: [] }),
         {
@@ -76,36 +132,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate embeddings for all tasks and calculate similarity
-    const results: Task[] = [];
-    
-    for (const task of tasksData) {
-      try {
-        // Generate embedding for task title
-        const taskEmbedding = await model.run(task.title, { mean_pool: true, normalize: true });
-        
-        // Calculate cosine similarity
-        const similarity = calculateCosineSimilarity(queryEmbedding, taskEmbedding);
-        
-        if (similarity > 0.7) {
-          results.push({
-            ...task,
-            similarity
-          });
-        }
-      } catch (embeddingError) {
-        console.error(`Error generating embedding for task ${task.id}:`, embeddingError);
-        // Continue with other tasks
-      }
-    }
-
-    // Sort by similarity (highest first) and take top 5
-    const topResults = results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, 5);
-
     return new Response(
-      JSON.stringify({ results: topResults }),
+      JSON.stringify({ results: tasksData }),
       {
         headers: {
           ...corsHeaders,
