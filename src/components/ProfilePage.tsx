@@ -49,14 +49,26 @@ function ProfilePage({ onBack }: ProfilePageProps) {
         .getPublicUrl(fileName);
       
       // Check if the file actually exists by trying to fetch it
-      const response = await fetch(data.publicUrl);
-      if (response.ok) {
-        setProfilePicture(data.publicUrl);
+      try {
+        const response = await fetch(data.publicUrl);
+        if (response.ok) {
+          setProfilePicture(data.publicUrl);
+        } else if (response.status === 404) {
+          // File doesn't exist - this is expected for users without profile pictures
+          setProfilePicture(null);
+        } else {
+          // Other HTTP errors
+          setProfilePicture(null);
+        }
+      } catch (fetchError) {
+        // Network or other fetch errors
+        setProfilePicture(null);
       }
     } catch (err) {
       if (bucketExists !== false) {
         console.log('No existing profile picture found');
       }
+      setProfilePicture(null);
     }
   };
 
