@@ -32,7 +32,7 @@ function ProfilePage({ onBack }: ProfilePageProps) {
       
       const { data } = supabase.storage
         .from(bucketName)
-        .getPublicUrl(`profile-pictures/${fileName}`);
+        .getPublicUrl(fileName);
       
       // Check if the file exists without triggering error logs
       const response = await fetch(data.publicUrl, { method: 'HEAD' });
@@ -76,7 +76,7 @@ function ProfilePage({ onBack }: ProfilePageProps) {
       // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(`profile-pictures/${fileName}`, file, {
+        .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
         });
@@ -91,7 +91,7 @@ function ProfilePage({ onBack }: ProfilePageProps) {
       // Get the public URL and update state
       const { data } = supabase.storage
         .from(bucketName)
-        .getPublicUrl(`profile-pictures/${fileName}`);
+        .getPublicUrl(fileName);
 
       setProfilePicture(data.publicUrl + '?t=' + Date.now());
       setSuccess('Profile picture uploaded successfully!');
