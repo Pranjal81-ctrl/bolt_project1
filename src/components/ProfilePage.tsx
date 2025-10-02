@@ -18,9 +18,14 @@ function ProfilePage({ onBack }: ProfilePageProps) {
   useEffect(() => {
     if (user) {
       checkBucketExists();
-      loadProfilePicture();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && bucketExists === true) {
+      loadProfilePicture();
+    }
+  }, [user, bucketExists]);
 
   const checkBucketExists = async () => {
     try {
